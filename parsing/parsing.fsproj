@@ -26,6 +26,7 @@
   <ItemGroup>
     <PackageReference Include="Expecto" Version="8.8.0" />
     <PackageReference Include="Expecto.FsCheck" Version="8.8.0" />
+    <PackageReference Include="Expecto.VisualStudio.TestAdapter" Version="10.0.2" />
   </ItemGroup>
 
 </Project>

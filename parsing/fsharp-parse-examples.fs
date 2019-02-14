@@ -175,14 +175,18 @@ module ParseHelpers
     /// matches a register name token
     let (|TPRName|_|) tok = Map.tryFind tok.Text regNames
 
+    /// LRes version of TPRName.
+    /// As TPRName but the match always succeed, returning an Error if a Register name is not matched 
+    /// The pattern outputs a pair which is the correctly parsed name (if it exists) paired with a Result.
+    /// This allows the pattern to be embedded in a chain of matches to parse a sequence of tokens.
     let (|TPRNameLRes|_|) tokList =
         match tokList with
-        | Error e -> R0, Error e
+        | Error e -> None, Error e
         | Ok (tok :: tL) -> 
                 match Map.tryFind tok.Text regNames with
-                | Some rn -> (rn, Ok tL)
-                | None -> R0, Error(sprintf "%s found when %s expected" tok.Text "register name", tok :: tL )
-        | Ok [] -> (R0, Error (" '' found when register name expected",[]))
+                | Some rn as rnOpt -> (rnOpt, Ok tL)
+                | None -> None, Error(sprintf "%s found when %s expected" tok.Text "register name", tok :: tL )
+        | Ok [] -> (None, Error (" '' found when register name expected",[]))
         |> Some
 
     /// matches a token with Text = tokStr (which must be a literal)
@@ -221,15 +225,15 @@ module ParseHelpers
     let rec (|TPRegListTailLRes|_|) tokLst =
         match tokLst with
         | Ok (TPTok "}" () :: tL) -> [], Ok tL
-        | TPTokLRes "," (TPRNameLRes( rn,  TPRegListTailLRes (rnL, toks))) -> rn :: rnL, toks
+        | TPTokLRes "," (TPRNameLRes( Some rn,  TPRegListTailLRes (rnL, toks))) -> rn :: rnL, toks
         | Ok [] -> [], Error("looking for ', Rn}' or '}'", [])
         | _ -> failwithf "What? Can't happen"
         |> Some
 
-    /// matches a brace enclosed comma sepaprated list of register names
+    /// matches a brace enclosed comma separated list of register names
     /// Like TPRegsList: but returns a result Error on match failure
     let (|TPRegListLRes|_|) tokLst =
         match tokLst with
-        | TPTokLRes "{" (TPRNameLRes (rn, TPRegListTailLRes (rnL, toks'))) -> rn :: rnL, toks'
+        | TPTokLRes "{" (TPRNameLRes (Some rn, TPRegListTailLRes (rnL, toks'))) -> rn :: rnL, toks'
         | _ -> failwithf "What? Can't happen"
         |> Some
