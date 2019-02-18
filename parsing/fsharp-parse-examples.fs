@@ -66,9 +66,9 @@ module ParseHelpers
 
 
     // characters interpreted as standalone
-    let tokenOpArray = [|"//";"*";"+";"-";"/";"(";")";";";",";"{";"}"|]
+    let tokenOpArray = [|"/";"*";"+";"-";"/";"(";")";";";",";"{";"}"|]
 
-    let tokenEndStrings = [|";";"//"|]
+    let tokenEndStrings = [|";"|]
 
     /// Tokenise a string returning a Result list of tokens or an error.
     /// Input s: string to tokenise.
@@ -130,12 +130,14 @@ module ParseHelpers
                     | true, _ -> toks |> scanner
                     | false,  Ok tok -> tok :: toks |> scanner
                     | false, Error e -> Error e
-
+             
                 match nextCh, state with
                 | None, InString ->
-                    "Line ended with non-terminated string" |> Error
-                | None, Norm ->
+                    "Line ended with non-terminated string" |> Error                   
+                | None, Norm when start = pos -> 
                     List.rev accToks |> Ok
+                | None, Norm -> 
+                    addNextTok (newScan Norm ) (pos - 1) accToks
                 | Some '"', InString ->
                     addNextTok (nextScan Norm) pos accToks
                 | Some '\\', InString ->
