@@ -6,10 +6,6 @@ open ParseHelpers
 open Expecto
 open FsCheck
 
-open System.Text.RegularExpressions
-
-type NumTyp = NBin | NHex | NDec
-
 module Gen =
     // custom random generators using FsCheck.Gen combinators
     // See https://github.com/haf/expecto/blob/master/README.md#property-based-tests
@@ -28,9 +24,8 @@ module Gen =
     let tokListGen = Gen.listOf (Gen.oneof [idGen ; idGen ; numGen; numGen; opGen])
     let optSpaceGen = Gen.elements ["";" "]
 
-    // magic 'partial active pattern'
+    // 'partial active pattern' used in tokStringArb
     // see https://fsharpforfunandprofit.com/posts/convenience-active-patterns/
-
     /// match only on a string which is NOT an operator, returning the string
     let (|MatchNotOp|_|) s =
         if Array.contains s tokenOpArray then None else Some s
@@ -55,15 +50,17 @@ module Gen =
             let getNextTokWithSep (lst: (string * string) list) =
                 match lst with
                 | [] | [_] -> ""
-                | (MatchNotOp t1, s1) :: (MatchNotOp _, _) :: _ -> t1 + " "
-                | (t1, s1) :: (_, _) :: _ -> t1 + s1
+                | (MatchNotOp t1, s1) :: (MatchNotOp _, _) :: _ -> t1 + " " // in this case a space is needed
+                | (t1, s1) :: (_, _) :: _ -> t1 + s1 // in this case an operator means no space is needed
             let rec subLists  = function | [] -> [[]] | _ :: tl as lst  -> lst :: subLists tl
-            return toksWithOptSeps 
-                    |> subLists
-                    |> List.map getNextTokWithSep
+            // return the list of tokens (with spaces added)
+            return 
+                toksWithOptSeps 
+                |> subLists
+                |> List.map getNextTokWithSep
         }
-        |> Arb.fromGen
-        |> Arb.convert TokString (fun (TokString l) -> l)
+        |> Arb.fromGen // wrap the custon Generator type as an Arbitrary for use with FsCheck
+        |> Arb.convert TokString (fun (TokString l) -> l) // Wrap the string list in TokString case
 
     let addToConfig config =
         let addedTypes = [
@@ -74,7 +71,7 @@ module Gen =
 
 [<AutoOpen>]
 module Auto =
-    // this defines FsCheck tests that include the custom generators
+    // this defines FsCheck tests that include the custom generators defined above
     // each generator is associated with a one case D.U. type used to wrap its data
     let private config = Gen.addToConfig FsCheckConfig.defaultConfig
     let testProp name = testPropertyWithConfig config name
@@ -82,23 +79,19 @@ module Auto =
     let ftestProp name = ftestPropertyWithConfig config name
     let etestProp stdgen name = etestPropertyWithConfig stdgen config name
 
+/// show 10 samples from FsCheck custom Arbitrary
 let printArbSamples (arb:Arbitrary<'a>) =
     let lst = (Gen.sample 7 10 arb.Generator)
     lst |> List.map (printf "%A\n")
     |> ignore
     printfn ""
 
+/// show 10 samples from FsCheck custom generator
 let printGenSamples gen = Arb.fromGen gen |> printArbSamples
 
-type Checker<'a,'b> = {Actual:'a ; Expected:'b }
+let tokRes = tokenise tokenOpArray tokenEndStrings
 
-let expectoEqualsBy f act exp mess =
-    let opt =
-        if f act = f exp then
-            None
-        else 
-            Some {Actual=act; Expected=exp}
-    Expect.isNone opt mess
+let expectoConfig = {defaultConfig with verbosity = Logging.LogLevel.Debug}
 
 [<Tests>]
 let testCustomTokeniser = 
@@ -108,7 +101,7 @@ let testCustomTokeniser =
                 ct 
                 |> List.takeWhile (fun s -> Array.contains (s.Trim()) tokenEndStrings |> not)
                 |> List.filter (fun s -> String.IsNullOrWhiteSpace s |> not ) 
-            match tokenise tokenOpArray tokenEndStrings tokStr with
+            match tokRes tokStr with
             | Ok lst -> Expect.equal lst.Length tokLst.Length 
                          (sprintf "Tokenise '%A' = %A" tokStr lst)
             | Error mess -> failwithf "Tokeniser failed with:%s" mess
@@ -118,10 +111,18 @@ let testCustomTokeniser =
 
 /// Test the Expecto Test Framework!
 [<Tests>]
-let allTests = testList "all tests" [
+let allTests = testList "Expecto tests" [
     testCase "A simple test" <| fun () ->
         let expected = 4
         Expect.equal expected (2+2) "2+2 = 4"
+    testCase "Tokeniser test" <| fun () ->
+        let src = "ADD R1,R2"
+        let expected = Ok [
+            {Pos=0 ; Text="ADD" ; TokType=SymTok}
+            {Pos=4 ; Text="R1" ; TokType=SymTok}
+            {Pos=6 ; Text="," ; TokType=OpTok}
+            {Pos=7 ; Text="R2" ; TokType=SymTok} ]
+        Expect.equal expected (tokRes src) "Four tokens correct"
     ]
 
 [<Tests>]
@@ -129,7 +130,7 @@ let allFsChecks =
     /// sample configuration for fscheck tests
     let config = { FsCheckConfig.defaultConfig with maxTest = 10000 }
 
-    /// list of 3 properties to test: eplace with real properties of your code
+    /// list of 3 properties to test: replace with real properties of your code
     let properties =
       testList "FsCheck samples" [
         testProperty "Addition is commutative" <| fun a b ->
@@ -145,13 +146,13 @@ let allFsChecks =
       ]
     // Run the tests: will be run from runAllTestsInAssembly because allFsChecks is
     // tagged by [<Tests>]
-    Tests.runTests defaultConfig properties
+    Tests.runTests expectoConfig properties
 
 let dispTok (tok:Token) = sprintf "<%A|'%s':%d>" tok.TokType tok.Text tok.Pos
 
 let dispTLst lst = lst |> List.map dispTok |> String.concat " ; " |> sprintf "[%s]"
 
-let tokRes = tokenise tokenOpArray tokenEndStrings
+
 
 let tokeniseSomething() =
     match tokRes "LOOP MOV R0, R1, 123" with
@@ -177,7 +178,7 @@ let parseSomething() =
 
 [<EntryPoint>]
 let main argv =
-    runTestsInAssembly defaultConfig [||] |> ignore // run all tests defined with [<Tests>]
+    runTestsInAssembly expectoConfig [||] |> ignore // run all tests defined with [<Tests>]
     printArbSamples Gen.tokStringArb
     tokeniseSomething()
     parseSomething()

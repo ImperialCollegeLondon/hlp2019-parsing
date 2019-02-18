@@ -168,12 +168,6 @@ module ParseHelpers
                     sprintf "Tokenise error at '%c' in '%s'" ch s.[windowLeft..windowRight] |> Error
         scan 0 0 Norm []
 
-    let tokListTest = [
-        {Pos=0 ; Text="ADD" ; TokType=SymTok}
-        {Pos=4 ; Text="R1" ; TokType=SymTok}
-        {Pos=7 ; Text="," ; TokType=OpTok}
-        {Pos=9 ; Text="R2" ; TokType=SymTok} ]
-
     /// matches a register name token
     let (|TPRName|_|) tok = Map.tryFind tok.Text regNames
 
