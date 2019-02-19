@@ -95,7 +95,8 @@ let expectoConfig = {defaultConfig with verbosity = Logging.LogLevel.Debug}
 
 [<Tests>]
 let testCustomTokeniser = 
-    let prop = testProp "Tokeniser delivers the correct number of tokens" <| fun (Gen.TokString ct) ->
+    testList "custom RNG tokeniser tests" [
+        testProp "Tokeniser delivers the correct number of tokens" <| fun (Gen.TokString ct) ->
             let tokStr = String.concat "" ct
             let tokLst = 
                 ct 
@@ -105,17 +106,29 @@ let testCustomTokeniser =
             | Ok lst -> Expect.equal lst.Length tokLst.Length 
                          (sprintf "Tokenise '%A' = %A" tokStr lst)
             | Error mess -> failwithf "Tokeniser failed with:%s" mess
-    prop
+        testProp "Tokens are the same as input string" <| fun (Gen.TokString ct) ->
+            let tokStr = String.concat "" ct
+            let tokInStr (tok:Token) = 
+                let posEnd = tok.Pos + tok.Text.Length
+                if posEnd > tokStr.Length then failwithf "Token end is beyond string end %A" tok
+                Expect.equal tokStr.[tok.Pos..posEnd-1] tok.Text "Token matches input string"
+            tokRes tokStr
+            |> Result.map (List.iter tokInStr)
+            |> function
+                 | Ok _ -> ()
+                 | Error mess -> failwithf "%s" mess
+        ]
+
 
 
 
 /// Test the Expecto Test Framework!
 [<Tests>]
 let allTests = testList "Expecto tests" [
-    testCase "A simple test" <| fun () ->
+    testCase "A sample test" <| fun () ->
         let expected = 4
         Expect.equal expected (2+2) "2+2 = 4"
-    testCase "Tokeniser test" <| fun () ->
+    testCase "Tokeniser sanity test" <| fun () ->
         let src = "ADD R1,R2"
         let expected = Ok [
             {Pos=0 ; Text="ADD" ; TokType=SymTok}
@@ -123,6 +136,9 @@ let allTests = testList "Expecto tests" [
             {Pos=6 ; Text="," ; TokType=OpTok}
             {Pos=7 ; Text="R2" ; TokType=SymTok} ]
         Expect.equal expected (tokRes src) "Four tokens correct"
+    testCase "Tokeniser insanity test" <| fun () ->
+        let src = "MOV 0abc"
+        Expect.isError (tokRes src) "Symbols must start with letter"
     ]
 
 [<Tests>]
