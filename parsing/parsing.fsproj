@@ -19,7 +19,8 @@
     <Compile Include="../../Visual2/src/Emulator/ParseTop.fs" />
     <Compile Include="../../Visual2/src/Emulator/ExecutionTop.fs" />
     <Compile Include="../../Visual2/src/Emulator/Testlib.fs" />
-    <Compile Include="fsharp-parse-examples.fs" />
+    <Compile Include="RegisterNames.fs" />
+    <Compile Include="ParseHelpers.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
