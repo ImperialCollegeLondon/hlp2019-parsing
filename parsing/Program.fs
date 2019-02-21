@@ -131,9 +131,7 @@ let testCustomTokeniser =
                 Expect.equal tokStr.[tok.Pos..posEnd-1] tok.Text "Token matches input string"
             tokRes tokStr
             |> Result.map (List.iter tokInStr)
-            |> function
-                 | Ok _ -> ()
-                 | Error mess -> Expect.isTrue false mess
+            |> Result.mapError (fun mess -> Expect.isTrue false mess)
         ]
 
 /// Test the Expecto Test Framework!
