@@ -9,7 +9,7 @@ github --> Visual2
        --> hlp2019parsing
 ```
 
-Run the project under dotnet core (not FABLE) to get test functionality. The parse code here is however compatible with FABLE.
+Run the project under dotnet core (not FABLE) to get test functionality. The parse code here is however compatible with FABLE. Note that the project needs to be opened and built in either Visual Studio or JetBrains Rider.
 
 The project in this repo will pick up emulator source files from Visual2, and can therefore be used to test add-on code to the emulator. You *can* change your local copy of the emulator files, and git will track those changes relative to the original code (better if you do this in a branch of the emulator project). Also, the enclosed parsing code has no dependence of the emulator files so you can equally use it elsewhere.
 
