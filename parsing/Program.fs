@@ -132,6 +132,7 @@ let testCustomTokeniser =
             tokRes tokStr
             |> Result.map (List.iter tokInStr)
             |> Result.mapError (fun mess -> Expect.isTrue false mess)
+            |> ignore
         ]
 
 /// Test the Expecto Test Framework!
@@ -161,8 +162,7 @@ let allFsChecks =
     let config = { FsCheckConfig.defaultConfig with maxTest = 10000 }
 
     /// list of 3 properties to test: replace with real properties of your code
-    let properties =
-      testList "FsCheck samples" [
+    testList "FsCheck samples" [
         testProperty "Addition is commutative" <| fun a b ->
           a + b = b + a
 
@@ -174,9 +174,7 @@ let allFsChecks =
           fun a b c ->
             a * (b + c) = a * b + a * c
       ]
-    // Run the tests: will be run from runAllTestsInAssembly because allFsChecks is
-    // tagged by [<Tests>]
-    Tests.runTests expectoConfig properties
+
 
 // printable string equiv of tokens
 let dispTok (tok:Token) = sprintf "<%A|'%s':%d>" tok.TokType tok.Text tok.Pos

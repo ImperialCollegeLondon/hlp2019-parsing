@@ -97,6 +97,7 @@ module ParseHelpers
                 /// Use of scanner callback is needed so this function can terminate scan if needed
                 let addNextTok scanner endPos toks = 
                     let makeTok typ text = Ok { Pos=start ; Text=text; TokType=typ}
+                    let tokText = s.[start..endPos].Trim()
                     let tokenOf = function
                         | "" -> Error "What? No text found for added token"
                         | NOTOK as text -> Error (sprintf "Can't tokenise: '%s'" text)
@@ -106,10 +107,11 @@ module ParseHelpers
                             | Ok u -> makeTok (NumTok u) text
                             | Error (mess, _) -> Error (sprintf "Can't tokenise: '%s': %s" text mess)
                         | ISSYM as text -> makeTok SymTok text
-                    match start = nPos, tokenOf s.[start..endPos] with
-                    | true, _ -> toks |> scanner
-                    | false,  Ok tok -> tok :: toks |> scanner
-                    | false, Error e -> Error e
+                    match tokText, start = nPos, tokenOf tokText with
+                    | _,  true, _ 
+                    | "", _   , _ -> toks |> scanner
+                    | _, false, Ok tok -> tok :: toks |> scanner
+                    | _, false, Error e -> Error e
              
                 match nextCh, state with
                 | None, InString ->
