@@ -59,7 +59,7 @@ module ParseHelpers
         /// classify a character: depends on opList so must be subfunction
         let (|WS|LETTER|DIGIT|OPCHAR|OTHER|) (ch:char) =  
             if Char.IsWhiteSpace ch then WS
-            elif Char.IsLetter ch then LETTER
+            elif Char.IsLetter ch || ch = '_' then LETTER
             elif Char.IsDigit ch then DIGIT
             elif Array.contains ch opInitArr then OPCHAR
             else OTHER
